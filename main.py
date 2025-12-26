@@ -13,21 +13,15 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
+
 st.markdown("""
     <style>
     .main-header {
-        font-size: 3rem;
+        font-size: 2rem;
         font-weight: bold;
         color: #1f77b4;
         text-align: center;
-        margin-bottom: 2rem;
-    }
-    .metric-card {
-        background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        margin: 0.5rem 0;
+        margin-bottom: 1rem;
     }
     </style>
     """, unsafe_allow_html=True)

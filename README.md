@@ -1,6 +1,6 @@
 # 📈 US Stock Analyzer
 
-A comprehensive Streamlit web application for analyzing US stocks in real-time.
+A Streamlit web app for analyzing US stocks in real-time.
 
 ## Features
 
@@ -37,19 +37,6 @@ The app will open in your default web browser at `http://localhost:8501`
 4. **Quick Access**: Use popular stock buttons for quick analysis
 5. **Download**: Export historical data as CSV for further analysis
 
-## Popular Stock Tickers
-
-- AAPL - Apple Inc.
-- MSFT - Microsoft Corporation
-- GOOGL - Alphabet Inc.
-- AMZN - Amazon.com Inc.
-- TSLA - Tesla Inc.
-- META - Meta Platforms Inc.
-- NVDA - NVIDIA Corporation
-- JPM - JPMorgan Chase & Co.
-- V - Visa Inc.
-- WMT - Walmart Inc.
-
 ## Data Source
 
 This app uses [yfinance](https://github.com/ranaroussi/yfinance) to fetch real-time stock data from Yahoo Finance.
@@ -60,4 +47,3 @@ This app uses [yfinance](https://github.com/ranaroussi/yfinance) to fetch real-t
 - **yfinance** - Stock data API
 - **Plotly** - Interactive charts
 - **Pandas** - Data manipulation
-
