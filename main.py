@@ -538,7 +538,36 @@ def main():
                 change = current_price - previous_close
                 change_percent = (change / previous_close) * 100
                 
-                col1, col2, col3 = st.columns([1, 1, 2])
+                # Calculate monthly and yearly returns
+                monthly_return = None
+                yearly_return = None
+                
+                if not hist_data.empty and len(hist_data) > 0:
+                    latest_price = hist_data['Close'].iloc[-1]
+                    
+                    # Monthly return (approximately 21 trading days = 1 month)
+                    try:
+                        if len(hist_data) >= 21:
+                            price_month_ago = hist_data['Close'].iloc[-21]
+                            monthly_return = ((latest_price - price_month_ago) / price_month_ago) * 100
+                        elif len(hist_data) >= 10:  # If less than a month of data, use what we have
+                            price_month_ago = hist_data['Close'].iloc[0]
+                            monthly_return = ((latest_price - price_month_ago) / price_month_ago) * 100
+                    except Exception as e:
+                        pass
+                    
+                    # Yearly return (approximately 252 trading days = 1 year)
+                    try:
+                        if len(hist_data) >= 252:
+                            price_year_ago = hist_data['Close'].iloc[-252]
+                            yearly_return = ((latest_price - price_year_ago) / price_year_ago) * 100
+                        elif len(hist_data) >= 100:  # If less than a year of data, use what we have
+                            price_year_ago = hist_data['Close'].iloc[0]
+                            yearly_return = ((latest_price - price_year_ago) / price_year_ago) * 100
+                    except Exception as e:
+                        pass
+                
+                col1, col2, col3, col4 = st.columns(4)
                 with col1:
                     st.metric("Current Price", f"${current_price:.2f}")
                 with col2:
@@ -548,8 +577,27 @@ def main():
                         f"{change_percent:.2f}%"
                     )
                 with col3:
-                    last_updated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    st.caption(f"Last updated: {last_updated}")
+                    if monthly_return is not None:
+                        st.metric(
+                            "Monthly Return",
+                            "",
+                            delta=f"{monthly_return:.2f}%"
+                        )
+                    else:
+                        st.metric("Monthly Return", "N/A")
+                with col4:
+                    if yearly_return is not None:
+                        st.metric(
+                            "Yearly Return",
+                            "",
+                            delta=f"{yearly_return:.2f}%"
+                        )
+                    else:
+                        st.metric("Yearly Return", "N/A")
+                
+                # Last updated timestamp
+                last_updated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                st.caption(f"Last updated: {last_updated}")
             
             st.markdown("---")
             

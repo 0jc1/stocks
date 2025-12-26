@@ -24,7 +24,7 @@ uv sync
 
 Run the Streamlit app:
 ```bash
-uv run streamlit run main.py
+streamlit run main.py
 ```
 
 The app will open in your default web browser at `http://localhost:8501`
@@ -47,3 +47,6 @@ This app uses [yfinance](https://github.com/ranaroussi/yfinance) to fetch real-t
 - **yfinance** - Stock data API
 - **Plotly** - Interactive charts
 - **Pandas** - Data manipulation
+
+## Contributions
+Contributors are welcome. Please feel free to submit a PR or issue.
