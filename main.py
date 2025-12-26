@@ -94,13 +94,104 @@ def format_financial_number(num):
         return f"{num:.2f}"
 
 
-def format_financial_dataframe(df):
-    """Format financial dataframe to show numbers in millions/billions"""
+def order_financial_statement(df, statement_type):
+    """Order financial statement rows in standard accounting order"""
+    if df is None or df.empty:
+        return df
+    
+    # Define standard ordering for each statement type
+    income_statement_order = [
+        'Total Revenue', 'Revenue', 'Operating Revenue',
+        'Cost Of Revenue', 'Gross Profit',
+        'Operating Expense', 'Selling General And Administration', 'Research And Development',
+        'Operating Income', 'EBITDA', 'EBIT',
+        'Interest Expense', 'Interest Income', 'Other Income Expense',
+        'Pretax Income', 'Income Before Tax', 'Tax Provision',
+        'Net Income From Continuing Operations', 'Net Income',
+        'Diluted EPS', 'Basic EPS',
+        'Diluted Average Shares', 'Basic Average Shares'
+    ]
+    
+    balance_sheet_order = [
+        # Assets
+        'Total Assets', 'Current Assets',
+        'Cash And Cash Equivalents', 'Cash Cash Equivalents And Short Term Investments',
+        'Receivables', 'Accounts Receivable', 'Inventory', 'Other Current Assets',
+        'Total Non Current Assets', 'Net PPE', 'Gross PPE', 'Properties',
+        'Goodwill', 'Other Intangible Assets', 'Investments And Advances',
+        # Liabilities
+        'Total Liabilities Net Minority Interest',
+        'Current Liabilities', 'Accounts Payable', 'Current Debt',
+        'Other Current Liabilities',
+        'Total Non Current Liabilities Net Minority Interest',
+        'Long Term Debt', 'Other Non Current Liabilities',
+        # Equity
+        'Stockholders Equity', 'Total Equity Gross Minority Interest',
+        'Common Stock', 'Retained Earnings', 'Treasury Stock',
+        'Total Capitalization', 'Share Issued'
+    ]
+    
+    cash_flow_order = [
+        # Operating Activities
+        'Operating Cash Flow', 'Cash Flow From Continuing Operating Activities',
+        'Net Income From Continuing Operations', 'Depreciation And Amortization',
+        'Deferred Tax', 'Stock Based Compensation',
+        'Change In Working Capital', 'Change In Receivables', 'Change In Inventory',
+        'Change In Payables And Accrued Expense',
+        # Investing Activities
+        'Investing Cash Flow', 'Cash Flow From Continuing Investing Activities',
+        'Net PPE Purchase And Sale', 'Purchase Of PPE',
+        'Net Investment Purchase And Sale', 'Purchase Of Investment',
+        'Sale Of Investment',
+        # Financing Activities
+        'Financing Cash Flow', 'Cash Flow From Continuing Financing Activities',
+        'Net Issuance Payments Of Debt', 'Net Long Term Debt Issuance',
+        'Net Short Term Debt Issuance', 'Repurchase Of Capital Stock',
+        'Common Stock Dividend Paid',
+        # Summary
+        'End Cash Position', 'Beginning Cash Position',
+        'Free Cash Flow'
+    ]
+    
+    # Select the appropriate order based on statement type
+    if statement_type == 'income':
+        order = income_statement_order
+    elif statement_type == 'balance':
+        order = balance_sheet_order
+    elif statement_type == 'cashflow':
+        order = cash_flow_order
+    else:
+        return df
+    
+    # Get the current index values
+    current_indices = df.index.tolist()
+    
+    # Create ordered index list
+    ordered_indices = []
+    for item in order:
+        if item in current_indices:
+            ordered_indices.append(item)
+    
+    # Add any remaining items not in our predefined order
+    for item in current_indices:
+        if item not in ordered_indices:
+            ordered_indices.append(item)
+    
+    # Reorder the dataframe
+    return df.reindex(ordered_indices)
+
+
+def format_financial_dataframe(df, statement_type=None):
+    """Format financial dataframe to show numbers in millions/billions and order rows"""
     if df is None or df.empty:
         return df
     
     # Create a copy to avoid modifying the original
     df_formatted = df.copy()
+    
+    # Order the statement first if type is provided
+    if statement_type:
+        df_formatted = order_financial_statement(df_formatted, statement_type)
     
     # Apply formatting to all numeric values
     for col in df_formatted.columns:
@@ -338,7 +429,7 @@ def display_additional_data(stock, ticker):
             try:
                 income_stmt = stock.financials
                 if income_stmt is not None and not income_stmt.empty:
-                    formatted_income = format_financial_dataframe(income_stmt)
+                    formatted_income = format_financial_dataframe(income_stmt, statement_type='income')
                     st.dataframe(formatted_income, use_container_width=True)
                 else:
                     st.info("Income statement data not available.")
@@ -349,7 +440,7 @@ def display_additional_data(stock, ticker):
             try:
                 balance_sheet = stock.balance_sheet
                 if balance_sheet is not None and not balance_sheet.empty:
-                    formatted_balance = format_financial_dataframe(balance_sheet)
+                    formatted_balance = format_financial_dataframe(balance_sheet, statement_type='balance')
                     st.dataframe(formatted_balance, use_container_width=True)
                 else:
                     st.info("Balance sheet data not available.")
@@ -360,7 +451,7 @@ def display_additional_data(stock, ticker):
             try:
                 cashflow = stock.cashflow
                 if cashflow is not None and not cashflow.empty:
-                    formatted_cashflow = format_financial_dataframe(cashflow)
+                    formatted_cashflow = format_financial_dataframe(cashflow, statement_type='cashflow')
                     st.dataframe(formatted_cashflow, use_container_width=True)
                 else:
                     st.info("Cash flow data not available.")
@@ -481,11 +572,6 @@ def main():
             
             st.markdown("---")
             
-            # Company info
-            display_company_info(info)
-            
-            st.markdown("---")
-            
             # Financial highlights
             display_financial_highlights(info)
             
@@ -493,6 +579,10 @@ def main():
             
             # Additional data
             display_additional_data(stock, ticker_to_display)
+
+            st.markdown("---")
+
+            display_company_info(info)
             
             # Download data option
             st.markdown("---")
@@ -504,6 +594,7 @@ def main():
                 file_name=f"{ticker_to_display}_historical_data.csv",
                 mime="text/csv"
             )
+
             
         else:
             st.error(f"❌ Could not fetch data for ticker '{ticker_to_display}'. Please check if the ticker is valid and try again.")
