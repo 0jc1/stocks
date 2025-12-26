@@ -78,6 +78,37 @@ def format_percentage(value):
     return f"{value:.2f}%"
 
 
+def format_financial_number(num):
+    """Format financial statement numbers in millions or billions"""
+    if num is None or pd.isna(num):
+        return "N/A"
+    
+    num = float(num)
+    if abs(num) >= 1e9:
+        return f"{num/1e9:.2f}B"
+    elif abs(num) >= 1e6:
+        return f"{num/1e6:.2f}M"
+    elif abs(num) >= 1e3:
+        return f"{num/1e3:.2f}K"
+    else:
+        return f"{num:.2f}"
+
+
+def format_financial_dataframe(df):
+    """Format financial dataframe to show numbers in millions/billions"""
+    if df is None or df.empty:
+        return df
+    
+    # Create a copy to avoid modifying the original
+    df_formatted = df.copy()
+    
+    # Apply formatting to all numeric values
+    for col in df_formatted.columns:
+        df_formatted[col] = df_formatted[col].apply(lambda x: format_financial_number(x) if pd.notna(x) and isinstance(x, (int, float)) else x)
+    
+    return df_formatted
+
+
 def create_price_chart(hist_data, ticker):
     """Create an interactive price and volume chart"""
     fig = make_subplots(
@@ -132,36 +163,31 @@ def create_price_chart(hist_data, ticker):
 
 def display_key_metrics(info):
     """Display key stock metrics in columns"""
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
-        st.metric(
-            "Current Price",
-            f"${info.get('currentPrice', 'N/A')}" if info.get('currentPrice') else "N/A"
-        )
+        market_cap = format_number(info.get('marketCap'))
+        st.metric("Market Cap", market_cap)
+    
+    with col2:
         st.metric(
             "Day Range",
             f"${info.get('dayLow', 'N/A')} - ${info.get('dayHigh', 'N/A')}"
         )
+
+        week_52_low = info.get('fiftyTwoWeekLow', 'N/A')
+        week_52_high = info.get('fiftyTwoWeekHigh', 'N/A')
+        st.metric("52 Week Range", f"${week_52_low} - ${week_52_high}")
     
-    with col2:
-        market_cap = format_number(info.get('marketCap'))
-        st.metric("Market Cap", market_cap)
-        
+    
+    with col3:
+        avg_volume = info.get('averageVolume')
+        st.metric("Avg Volume", format_number(avg_volume))
+
         pe_ratio = info.get('trailingPE', 'N/A')
         if pe_ratio and pe_ratio != 'N/A':
             pe_ratio = f"{pe_ratio:.2f}"
         st.metric("P/E Ratio", pe_ratio)
-    
-    with col3:
-        week_52_low = info.get('fiftyTwoWeekLow', 'N/A')
-        week_52_high = info.get('fiftyTwoWeekHigh', 'N/A')
-        st.metric("52 Week Range", f"${week_52_low} - ${week_52_high}")
-        
-        avg_volume = info.get('averageVolume', 'N/A')
-        if avg_volume and avg_volume != 'N/A':
-            avg_volume = f"{avg_volume:,}"
-        st.metric("Avg Volume", avg_volume)
     
     with col4:
         div_yield = info.get('dividendYield')
@@ -176,6 +202,19 @@ def display_key_metrics(info):
         if beta and beta != 'N/A':
             beta = f"{beta:.2f}"
         st.metric("Beta", beta)
+
+    with col5:
+        # Forward PE
+        forward_pe = info.get('forwardPE', 'N/A')
+        if forward_pe and forward_pe != 'N/A':
+            forward_pe = f"{forward_pe:.2f}"
+        st.metric(f"Forward P/E", forward_pe)
+        
+        # PEG Ratio
+        peg = info.get('pegRatio', 'N/A')
+        if peg and peg != 'N/A':
+            peg = f"{peg:.2f}"
+        st.metric(f"PEG Ratio:", peg)
 
 
 def display_company_info(info):
@@ -195,18 +234,6 @@ def display_company_info(info):
         st.write(f"**Full Time Employees:** {info.get('fullTimeEmployees', 'N/A'):,}" if info.get('fullTimeEmployees') else "**Full Time Employees:** N/A")
         st.write(f"**Exchange:** {info.get('exchange', 'N/A')}")
         st.write(f"**Currency:** {info.get('currency', 'N/A')}")
-        
-        # Forward PE
-        forward_pe = info.get('forwardPE', 'N/A')
-        if forward_pe and forward_pe != 'N/A':
-            forward_pe = f"{forward_pe:.2f}"
-        st.write(f"**Forward P/E:** {forward_pe}")
-        
-        # PEG Ratio
-        peg = info.get('pegRatio', 'N/A')
-        if peg and peg != 'N/A':
-            peg = f"{peg:.2f}"
-        st.write(f"**PEG Ratio:** {peg}")
     
     # Business Summary
     if info.get('longBusinessSummary'):
@@ -274,14 +301,14 @@ def display_additional_data(stock, ticker):
             st.write(f"Open: ${info.get('open', 'N/A')}")
             st.write(f"Bid: {info.get('bid', 'N/A')} x {info.get('bidSize', 'N/A')}")
             st.write(f"Ask: {info.get('ask', 'N/A')} x {info.get('askSize', 'N/A')}")
-            st.write(f"Volume: {info.get('volume', 'N/A'):,}" if info.get('volume') else "Volume: N/A")
+            st.write(f"Volume: {format_number(info.get('volume', 'N/A'))}" if info.get('volume') else "Volume: N/A")
         
         with col2:
             st.write("**Stock Price Info**")
-            st.write(f"Regular Market Volume: {info.get('regularMarketVolume', 'N/A'):,}" if info.get('regularMarketVolume') else "Regular Market Volume: N/A")
-            st.write(f"Average Volume (10d): {info.get('averageVolume10days', 'N/A'):,}" if info.get('averageVolume10days') else "Average Volume (10d): N/A")
-            st.write(f"Shares Outstanding: {format_number(info.get('sharesOutstanding'))}")
-            st.write(f"Float Shares: {format_number(info.get('floatShares'))}")
+            st.write(f"Regular Market Volume: {format_number(info.get('regularMarketVolume', 'N/A'))}" if info.get('regularMarketVolume') else "Regular Market Volume: N/A")
+            st.write(f"Average Volume (10d): {format_number(info.get('averageVolume10days', 'N/A'))}" if info.get('averageVolume10days') else "Average Volume (10d): N/A")
+            st.write(f"Shares Outstanding: {info.get('sharesOutstanding'):,}")
+            st.write(f"Float Shares: {info.get('floatShares'):,}")
     
     with tab2:
         st.subheader("Recent News")
@@ -303,6 +330,7 @@ def display_additional_data(stock, ticker):
     
     with tab3:
         st.subheader("Financial Statements")
+        st.caption("All values shown in Millions (M) or Billions (B)")
         
         fin_tab1, fin_tab2, fin_tab3 = st.tabs(["Income Statement", "Balance Sheet", "Cash Flow"])
         
@@ -310,30 +338,33 @@ def display_additional_data(stock, ticker):
             try:
                 income_stmt = stock.financials
                 if income_stmt is not None and not income_stmt.empty:
-                    st.dataframe(income_stmt, use_container_width=True)
+                    formatted_income = format_financial_dataframe(income_stmt)
+                    st.dataframe(formatted_income, use_container_width=True)
                 else:
                     st.info("Income statement data not available.")
-            except:
+            except Exception as e:
                 st.info("Income statement data not available.")
         
         with fin_tab2:
             try:
                 balance_sheet = stock.balance_sheet
                 if balance_sheet is not None and not balance_sheet.empty:
-                    st.dataframe(balance_sheet, use_container_width=True)
+                    formatted_balance = format_financial_dataframe(balance_sheet)
+                    st.dataframe(formatted_balance, use_container_width=True)
                 else:
                     st.info("Balance sheet data not available.")
-            except:
+            except Exception as e:
                 st.info("Balance sheet data not available.")
         
         with fin_tab3:
             try:
                 cashflow = stock.cashflow
                 if cashflow is not None and not cashflow.empty:
-                    st.dataframe(cashflow, use_container_width=True)
+                    formatted_cashflow = format_financial_dataframe(cashflow)
+                    st.dataframe(formatted_cashflow, use_container_width=True)
                 else:
                     st.info("Cash flow data not available.")
-            except:
+            except Exception as e:
                 st.info("Cash flow data not available.")
 
 
@@ -358,7 +389,7 @@ def main():
         ).upper()
         
         # Search button
-        search_button = st.button("🔍 Search Stock", type="primary", use_container_width=True)
+        search_button = st.button("Search", type="primary", use_container_width=True)
         
         # Update current ticker when search is clicked
         if search_button:
@@ -427,7 +458,7 @@ def main():
                     st.metric("Current Price", f"${current_price:.2f}")
                 with col2:
                     st.metric(
-                        "Change",
+                        "Change (24h)",
                         f"${change:.2f}",
                         f"{change_percent:.2f}%"
                     )
@@ -479,34 +510,7 @@ def main():
             st.info("💡 Tip: Make sure you're using valid US stock tickers (e.g., AAPL, MSFT, GOOGL)")
     else:
         # Welcome message when no stock is selected
-        st.info("👈 Enter a stock ticker in the sidebar to begin analysis")
-        
-        st.markdown("### 🌟 Features")
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.markdown("""
-            **📊 Real-time Data**
-            - Current price & market cap
-            - Volume & trading info
-            - 52-week highs/lows
-            """)
-        
-        with col2:
-            st.markdown("""
-            **📈 Interactive Charts**
-            - Candlestick price charts
-            - Volume analysis
-            - Multiple timeframes
-            """)
-        
-        with col3:
-            st.markdown("""
-            **💼 Financial Analysis**
-            - Key ratios & metrics
-            - Financial statements
-            - Company information
-            """)
+        st.info("Enter a stock ticker in the sidebar to begin analysis!")
 
 
 if __name__ == "__main__":
