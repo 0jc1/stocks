@@ -166,7 +166,8 @@ def display_key_metrics(info):
     with col4:
         div_yield = info.get('dividendYield')
         if div_yield:
-            div_yield = format_percentage(div_yield * 100)
+            # dividendYield from yfinance appears to be in percentage form already
+            div_yield = f"{div_yield:.2f}%"
         else:
             div_yield = "N/A"
         st.metric("Dividend Yield", div_yield)
@@ -337,6 +338,10 @@ def display_additional_data(stock, ticker):
 
 
 def main():
+    # Initialize session state
+    if 'current_ticker' not in st.session_state:
+        st.session_state.current_ticker = "AAPL"
+    
     # Header
     st.markdown('<h1 class="main-header">📈 US Stock Analyzer</h1>', unsafe_allow_html=True)
     st.markdown("---")
@@ -348,32 +353,16 @@ def main():
         # Stock ticker input
         ticker_input = st.text_input(
             "Enter Stock Ticker",
-            value="AAPL",
+            value=st.session_state.current_ticker,
             help="Enter a valid US stock ticker (e.g., AAPL, MSFT, GOOGL)"
         ).upper()
         
-        # Time period selection
-        period_options = {
-            "1 Week": "1wk",
-            "1 Month": "1mo",
-            "3 Months": "3mo",
-            "6 Months": "6mo",
-            "1 Year": "1y",
-            "2 Years": "2y",
-            "5 Years": "5y",
-            "Max": "max"
-        }
-        
-        selected_period = st.selectbox(
-            "Select Time Period",
-            options=list(period_options.keys()),
-            index=4  # Default to 1 Year
-        )
-        
-        period = period_options[selected_period]
-        
         # Search button
         search_button = st.button("🔍 Search Stock", type="primary", use_container_width=True)
+        
+        # Update current ticker when search is clicked
+        if search_button:
+            st.session_state.current_ticker = ticker_input
         
         st.markdown("---")
         
@@ -385,18 +374,45 @@ def main():
         for idx, stock in enumerate(popular_stocks):
             col = cols[idx % 2]
             if col.button(stock, use_container_width=True):
-                ticker_input = stock
-                search_button = True
+                st.session_state.current_ticker = stock
+                st.rerun()
+        
+        st.markdown("---")
+        
+        # Time period selection (moved below stock selection for better UX)
+        if st.session_state.current_ticker:
+            st.subheader("Time Period")
+            period_options = {
+                "1 Week": "1wk",
+                "1 Month": "1mo",
+                "3 Months": "3mo",
+                "6 Months": "6mo",
+                "1 Year": "1y",
+                "2 Years": "2y",
+                "5 Years": "5y",
+                "Max": "max"
+            }
+            
+            selected_period = st.selectbox(
+                "Select Time Period",
+                options=list(period_options.keys()),
+                index=4,  # Default to 1 Year
+                key="period_selector"
+            )
+            
+            period = period_options[selected_period]
     
-    # Main content
-    if ticker_input:
-        with st.spinner(f"Loading data for {ticker_input}..."):
-            hist_data, info = get_stock_data(ticker_input, period)
-            stock = get_stock_object(ticker_input)
+    # Main content - use session state ticker
+    ticker_to_display = st.session_state.current_ticker
+    
+    if ticker_to_display:
+        with st.spinner(f"Loading data for {ticker_to_display}..."):
+            hist_data, info = get_stock_data(ticker_to_display, period)
+            stock = get_stock_object(ticker_to_display)
         
         if hist_data is not None and info is not None and stock is not None and not hist_data.empty:
             # Display stock name and current info
-            st.title(f"{info.get('longName', ticker_input)} ({ticker_input})")
+            st.title(f"{info.get('longName', ticker_to_display)} ({ticker_to_display})")
             
             # Current price with change
             current_price = info.get('currentPrice', info.get('regularMarketPrice', 'N/A'))
@@ -422,14 +438,14 @@ def main():
             st.markdown("---")
             
             # Key metrics
-            st.subheader("📊 Key Metrics")
+            st.subheader("Key Metrics")
             display_key_metrics(info)
             
             st.markdown("---")
             
             # Price chart
-            st.subheader(f"📈 Price Chart ({selected_period})")
-            fig = create_price_chart(hist_data, ticker_input)
+            st.subheader(f"Price Chart ({selected_period})")
+            fig = create_price_chart(hist_data, ticker_to_display)
             st.plotly_chart(fig, use_container_width=True)
             
             st.markdown("---")
@@ -445,21 +461,21 @@ def main():
             st.markdown("---")
             
             # Additional data
-            display_additional_data(stock, ticker_input)
+            display_additional_data(stock, ticker_to_display)
             
             # Download data option
             st.markdown("---")
-            st.subheader("💾 Download Data")
+            st.subheader("Download Data")
             csv = hist_data.to_csv()
             st.download_button(
                 label="Download Historical Data as CSV",
                 data=csv,
-                file_name=f"{ticker_input}_historical_data.csv",
+                file_name=f"{ticker_to_display}_historical_data.csv",
                 mime="text/csv"
             )
             
         else:
-            st.error(f"❌ Could not fetch data for ticker '{ticker_input}'. Please check if the ticker is valid and try again.")
+            st.error(f"❌ Could not fetch data for ticker '{ticker_to_display}'. Please check if the ticker is valid and try again.")
             st.info("💡 Tip: Make sure you're using valid US stock tickers (e.g., AAPL, MSFT, GOOGL)")
     else:
         # Welcome message when no stock is selected
